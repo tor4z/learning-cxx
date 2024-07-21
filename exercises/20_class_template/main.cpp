@@ -1,4 +1,5 @@
 ﻿#include "../exercise.h"
+#include <cstring>
 
 // READ: 类模板 <https://zh.cppreference.com/w/cpp/language/class_template>
 
@@ -10,7 +11,10 @@ struct Tensor4D {
     Tensor4D(unsigned int const shape_[4], T const *data_) {
         unsigned int size = 1;
         // TODO: 填入正确的 shape 并计算 size
+        size = shape_[0] * shape_[1] * shape_[2] * shape_[3];
         data = new T[size];
+
+        std::memcpy(shape, shape_, 4 * sizeof(unsigned int));
         std::memcpy(data, data_, size * sizeof(T));
     }
     ~Tensor4D() {
@@ -28,6 +32,28 @@ struct Tensor4D {
     // 则 `this` 与 `others` 相加时，3 个形状为 `[1, 2, 1, 4]` 的子张量各自与 `others` 对应项相加。
     Tensor4D &operator+=(Tensor4D const &others) {
         // TODO: 实现单向广播的加法
+        unsigned int s1{shape[3]};
+        unsigned int s2{shape[2] * shape[3]};
+        unsigned int s3{shape[1] * shape[2] * shape[3]};
+
+        unsigned int so1{others.shape[3]};
+        unsigned int so2{others.shape[2] * others.shape[3]};
+        unsigned int so3{others.shape[1] * others.shape[2] * others.shape[3]};
+        for (int i = 0, io = 0; i < std::max(shape[0], others.shape[0]); ++i) {
+            if (others.shape[0] > 1) io = i;
+            for (int j = 0, jo = 0; j < std::max(shape[1], others.shape[1]); ++j) {
+                if (others.shape[1] > 1) jo = j;
+                for (int k = 0, ko = 0; k < std::max(shape[2], others.shape[2]); ++k) {
+                    if (others.shape[2] > 1) ko = k;
+                    for (int m = 0, mo = 0; m < std::max(shape[3], others.shape[3]); ++m) {
+                        if (others.shape[3] > 1) mo = m;
+                        data[i * s3 + j * s2 + k * s1 + m] +=
+                            others.data[io * so3 + jo * so2 + ko * so1 + mo];
+                    }
+                }
+            }
+        }
+
         return *this;
     }
 };
@@ -102,8 +128,8 @@ int main(int argc, char **argv) {
         auto t0 = Tensor4D(s0, d0);
         auto t1 = Tensor4D(s1, d1);
         t0 += t1;
-        for (unsigned int i = 0; i < sizeof(d0) / sizeof(int); i++) {
-            ASSERT(t0.data[i] == t0.data[i] + 1, "Every element of t0 should be incremented by 1 after adding t1 to it.");
+        for (unsigned int i = 0; i < sizeof(d0) / sizeof(double); i++) {
+            ASSERT(t0.data[i] == d0[i] + 1, "Every element of t0 should be incremented by 1 after adding t1 to it.");
         }
     }
 }
